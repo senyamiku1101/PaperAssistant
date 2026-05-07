@@ -1,0 +1,38 @@
+# 文献检索工作流配置
+# 修改此文件后无需改代码即可调整搜索策略
+
+# 全局评分权重
+scoring:
+  relevance_weight: 0.40
+  quality_weight: 0.20
+  novelty_weight: 0.25
+  recency_weight: 0.15
+  top_n_candidates: 10
+
+# 搜索课题
+topics:
+  - name: "涡轮冷却"
+    keywords:
+      - "turbine cooling"
+      - "film cooling"
+      - "impingement cooling"
+      - "turbine blade heat transfer"
+      - "shaped hole"
+      - "endwall cooling"
+    years: "2024-2026"
+    monitor: true
+
+  - name: "航空发动机燃烧"
+    keywords:
+      - "aero engine combustion"
+      - "lean blowout"
+      - "combustion instability"
+      - "low emission combustion"
+      - "hydrogen combustion aero engine"
+    years: "2024-2026"
+    monitor: true
+
+# OpenAlex API 设置
+openalex:
+  email: "your-email@example.com"
+  max_results_per_query: 50
