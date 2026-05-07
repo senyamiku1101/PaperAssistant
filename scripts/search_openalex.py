@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import re
 import sys
 import time
 from datetime import datetime
@@ -12,11 +13,47 @@ import yaml
 
 
 def load_config(config_path: str) -> dict:
+    """Load YAML configuration from a file path."""
     with open(config_path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 
+def validate_config(config: dict) -> bool:
+    """Validate configuration structure and print errors to stderr.
+
+    Returns True if the config is valid, False otherwise.
+    """
+    valid = True
+
+    # Check openalex.email
+    email = config.get("openalex", {}).get("email")
+    if not email:
+        print("Error: config missing 'openalex.email'", file=sys.stderr)
+        valid = False
+
+    # Check topics list
+    topics = config.get("topics")
+    if not topics or not isinstance(topics, list) or len(topics) == 0:
+        print("Error: config missing non-empty 'topics' list", file=sys.stderr)
+        valid = False
+    else:
+        for i, t in enumerate(topics):
+            if not isinstance(t, dict):
+                print(f"Error: topics[{i}] is not a dict", file=sys.stderr)
+                valid = False
+                continue
+            if not t.get("name"):
+                print(f"Error: topics[{i}] missing 'name'", file=sys.stderr)
+                valid = False
+            if not t.get("keywords"):
+                print(f"Error: topics[{i}] missing 'keywords'", file=sys.stderr)
+                valid = False
+
+    return valid
+
+
 def build_query(keywords: list[str], years: str) -> dict:
+    """Build OpenAlex API query params from keywords and year range."""
     search_terms = " OR ".join(f'"{kw}"' for kw in keywords)
     return {
         "search": search_terms,
@@ -26,7 +63,19 @@ def build_query(keywords: list[str], years: str) -> dict:
     }
 
 
+def reconstruct_abstract(inverted_index):
+    """Reconstruct abstract text from OpenAlex inverted_index format."""
+    if not inverted_index or not isinstance(inverted_index, dict):
+        return ""
+    positioned = {}
+    for word, positions in inverted_index.items():
+        for pos in positions:
+            positioned[pos] = word
+    return " ".join(positioned[i] for i in sorted(positioned))
+
+
 def parse_work(work: dict) -> dict:
+    """Parse a single OpenAlex work record into a flat dict."""
     doi = work.get("doi", "")
     if doi:
         doi = doi.replace("https://doi.org/", "")
@@ -38,7 +87,7 @@ def parse_work(work: dict) -> dict:
             a.get("author", {}).get("display_name", "")
             for a in work.get("authorships", [])
         ],
-        "abstract": "",
+        "abstract": reconstruct_abstract(work.get("abstract_inverted_index")),
         "year": work.get("publication_year"),
         "cited_by_count": work.get("cited_by_count", 0),
         "source": work.get("primary_location", {})
@@ -56,21 +105,53 @@ def search_openalex(
     email: str,
     max_results: int = 50,
 ) -> list[dict]:
+    """Search OpenAlex API and return parsed work records.
+
+    Handles pagination via cursor and retries failed requests up to
+    2 times with a 1-second delay. On unrecoverable failure, returns
+    partial results collected so far.
+    """
     params = build_query(keywords, years)
-    params["per_page"] = max_results
+    params["per_page"] = min(max_results, 200)
     params["mailto"] = email
 
-    url = "https://api.openalex.org/works"
-    results = []
+    base_url = "https://api.openalex.org/works"
+    url = base_url
+    results: list[dict] = []
+    is_first_page = True
+    max_retries = 2
 
     while url and len(results) < max_results:
-        resp = requests.get(
-            url,
-            params=params if url == "https://api.openalex.org/works" else None,
-            timeout=30,
-        )
-        resp.raise_for_status()
-        data = resp.json()
+        for attempt in range(max_retries + 1):
+            try:
+                if is_first_page:
+                    resp = requests.get(url, params=params, timeout=30)
+                else:
+                    resp = requests.get(url, timeout=30)
+                resp.raise_for_status()
+                data = resp.json()
+                break
+            except requests.RequestException as e:
+                if attempt < max_retries:
+                    print(
+                        f"Request failed (attempt {attempt + 1}/{max_retries + 1}): {e}",
+                        file=sys.stderr,
+                    )
+                    time.sleep(1)
+                else:
+                    print(
+                        f"Request failed after {max_retries + 1} attempts: {e}",
+                        file=sys.stderr,
+                    )
+                    return results
+            except json.JSONDecodeError as e:
+                print(
+                    f"JSON decode error after {attempt + 1} attempt(s): {e}",
+                    file=sys.stderr,
+                )
+                return results
+
+        is_first_page = False
 
         for work in data.get("results", []):
             if len(results) >= max_results:
@@ -79,7 +160,7 @@ def search_openalex(
 
         next_cursor = data.get("meta", {}).get("next_cursor")
         if next_cursor:
-            url = f"https://api.openalex.org/works?cursor={next_cursor}"
+            url = f"{base_url}?cursor={next_cursor}"
         else:
             break
 
@@ -89,9 +170,14 @@ def search_openalex(
 
 
 def save_results(results: list[dict], output_dir: str, topic_name: str) -> str:
+    """Save search results to a timestamped JSON file.
+
+    Returns the path of the written file.
+    """
     os.makedirs(output_dir, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    safe_topic = topic_name.replace(" ", "_").replace("/", "_")
+    safe_topic = re.sub(r'[<>:"/\\|?*]', '_', topic_name)
+    safe_topic = safe_topic.replace(" ", "_")
     path = os.path.join(output_dir, f"search_{safe_topic}_{timestamp}.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(results, f, ensure_ascii=False, indent=2)
@@ -106,6 +192,9 @@ def main():
     args = parser.parse_args()
 
     config = load_config(args.config)
+
+    if not validate_config(config):
+        sys.exit(1)
 
     topic_config = None
     for t in config.get("topics", []):
