@@ -6,6 +6,9 @@ import json
 import os
 import sys
 
+# Allow importing sibling modules within scripts/ regardless of launch method
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 import yaml
 
 from search_openalex import search_openalex
