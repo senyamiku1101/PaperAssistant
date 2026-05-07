@@ -9,10 +9,10 @@ import sys
 
 
 def normalize_title(title: str) -> str:
-    """Normalize title: lowercase, remove non-alphanumeric, collapse spaces."""
+    """Normalize title for comparison: lowercase, strip non-alphanumeric."""
     if not title:
         return ""
-    return re.sub(r"\s+", "", re.sub(r"[^a-z0-9]", "", title.lower()))
+    return re.sub(r"[^a-z0-9]", "", title.lower())
 
 
 def check_duplicate(candidate: dict, library: list[dict]) -> tuple[bool, str | None]:
@@ -60,8 +60,21 @@ def main():
     parser.add_argument("--output", help="Output JSON file (default: print to stdout)")
     args = parser.parse_args()
 
-    with open(args.input, "r", encoding="utf-8") as f:
-        candidates = json.load(f)
+    try:
+        with open(args.input, "r", encoding="utf-8") as f:
+            candidates = json.load(f)
+    except FileNotFoundError:
+        print(f"Error: input file not found: {args.input}", file=sys.stderr)
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(f"Error: invalid JSON in input file: {e}", file=sys.stderr)
+        sys.exit(1)
+    if not isinstance(candidates, list):
+        print(
+            "Error: input JSON must contain a list of candidate papers",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     if not os.path.exists(args.library):
         print(
@@ -82,7 +95,7 @@ def main():
         os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
         with open(args.output, "w", encoding="utf-8") as f:
             json.dump(filtered, f, ensure_ascii=False, indent=2)
-        print(f"Saved to {args.output}")
+        print(f"Saved to {args.output}", file=sys.stderr)
     else:
         print(json.dumps(filtered, ensure_ascii=False, indent=2))
 

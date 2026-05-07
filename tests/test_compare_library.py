@@ -20,6 +20,11 @@ def test_normalize_title_removes_punctuation_and_case():
     assert normalize_title("  Extra   Spaces  ") == "extraspaces"
 
 
+def test_normalize_title_space_removal_behavior():
+    """Document: normalize_title treats heat-transfer and heattransfer as equal."""
+    assert normalize_title("heat transfer") == normalize_title("heattransfer")
+
+
 def test_check_duplicate_doi_match():
     library = [{"title": "Old Paper", "doi": "10.1234/abcd"}]
     candidate = {"title": "Different Title", "doi": "10.1234/abcd"}
