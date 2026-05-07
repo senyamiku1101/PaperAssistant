@@ -19,6 +19,8 @@ topics:
       - "turbine blade heat transfer"
       - "shaped hole"
       - "endwall cooling"
+      - "effusion cooling"
+      - "pin fin cooling"
     years: "2024-2026"
     monitor: true
 
@@ -34,5 +36,6 @@ topics:
 
 # OpenAlex API 设置
 openalex:
-  email: "your-email@example.com"
+  # REQUIRED: Replace with your real email for OpenAlex polite pool access
+  email: "user@example.com"
   max_results_per_query: 50
