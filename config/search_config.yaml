@@ -21,6 +21,6 @@ topics:
 # OpenAlex API 设置
 openalex:
   # REQUIRED: Replace with your real email for OpenAlex polite pool access
-  email: "buaazyh@buaa.edu.cn"
+  email: ""
   subfield_id: "2202"     # Aerospace Engineering
   max_results_per_query: 100
