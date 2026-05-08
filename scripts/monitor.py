@@ -141,6 +141,7 @@ def main():
             years=years,
             email=email,
             max_results=max_results,
+            subfield_id=config.get("openalex", {}).get("subfield_id"),
         )
 
         new_count = len(results)

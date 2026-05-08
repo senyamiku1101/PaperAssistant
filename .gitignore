@@ -1,3 +1,11 @@
 .worktrees/
 __pycache__/
 .pytest_cache/
+
+# Output data files
+output/*.json
+output/*.md
+
+# Zotero library export (user-specific)
+config/zotero_library.csv
+config/zotero_library.json

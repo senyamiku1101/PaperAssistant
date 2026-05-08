@@ -11,31 +11,16 @@ scoring:
 
 # 搜索课题
 topics:
-  - name: "涡轮冷却"
+  - name: "斜切口短舱进气道"
     keywords:
-      - "turbine cooling"
-      - "film cooling"
-      - "impingement cooling"
-      - "turbine blade heat transfer"
-      - "shaped hole"
-      - "endwall cooling"
-      - "effusion cooling"
-      - "pin fin cooling"
-    years: "2024-2026"
-    monitor: true
-
-  - name: "航空发动机燃烧"
-    keywords:
-      - "aero engine combustion"
-      - "lean blowout"
-      - "combustion instability"
-      - "low emission combustion"
-      - "hydrogen combustion aero engine"
-    years: "2024-2026"
+      - "drooped intake"
+      - "scarfed intake"
+    years: "1960-2026"
     monitor: true
 
 # OpenAlex API 设置
 openalex:
   # REQUIRED: Replace with your real email for OpenAlex polite pool access
-  email: "user@example.com"
-  max_results_per_query: 50
+  email: "buaazyh@buaa.edu.cn"
+  subfield_id: "2202"     # Aerospace Engineering
+  max_results_per_query: 100

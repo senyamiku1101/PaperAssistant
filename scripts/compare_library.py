@@ -45,10 +45,14 @@ def compare_with_library(candidates: list[dict], library: list[dict]) -> list[di
 
 
 def load_library_csv(path: str) -> list[dict]:
-    """Load Zotero library exported as CSV."""
+    """Load Zotero library exported as CSV.
+
+    Zotero exports column names in capitalized form (e.g. "Title", "DOI").
+    We normalize all keys to lowercase for consistent access downstream.
+    """
     with open(path, "r", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
-        return [dict(row) for row in reader]
+        return [{k.lower(): v for k, v in row.items()} for row in reader]
 
 
 def main():
